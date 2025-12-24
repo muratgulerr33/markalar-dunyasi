@@ -1,0 +1,48 @@
+{
+  "name": "markalar-dunyasi",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "npm run images:webp && next build",
+    "start": "next start",
+    "lint": "eslint",
+    "images:webp": "tsx scripts/convert-public-to-webp.ts",
+    "images:webp:dry": "tsx scripts/convert-public-to-webp.ts --dry",
+    "images:webp:watch": "tsx scripts/convert-public-to-webp.ts --watch"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-navigation-menu": "^1.2.14",
+    "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-switch": "^1.2.6",
+    "@radix-ui/react-tabs": "^1.1.13",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.562.0",
+    "next": "16.1.1",
+    "next-themes": "^0.4.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "tailwind-merge": "^3.4.0",
+    "vaul": "^1.1.2",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "chokidar": "^5.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.1",
+    "fast-glob": "^3.3.3",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^4",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}
