@@ -5,6 +5,7 @@ import { YelizSametTopbar } from "@/components/yeliz-samet-topbar";
 import { YelizSametAlbumGrid } from "@/components/yeliz-samet-album-grid";
 import { YelizSametMenuDrawer } from "@/components/yeliz-samet-menu-drawer";
 import { Button } from "@/components/ui/button";
+import { TapButton } from "@/components/ui/tap";
 import { Download } from "lucide-react";
 
 interface YelizSametYatClientProps {
@@ -25,22 +26,26 @@ export function YelizSametYatClient({ items }: YelizSametYatClientProps) {
         rightContent={
           <>
             {selectionMode && selectedCount > 0 && (
+              <TapButton asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => downloadRef.current?.()}
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  İndir ({selectedCount})
+                </Button>
+              </TapButton>
+            )}
+            <TapButton asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => downloadRef.current?.()}
+                onClick={() => setSelectionMode(!selectionMode)}
               >
-                <Download className="h-4 w-4 mr-1" />
-                İndir ({selectedCount})
+                {selectionMode ? "Bitti" : "Seç"}
               </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectionMode(!selectionMode)}
-            >
-              {selectionMode ? "Bitti" : "Seç"}
-            </Button>
+            </TapButton>
           </>
         }
       />

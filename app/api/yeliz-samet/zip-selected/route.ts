@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
           if (closed) return;
           try {
             controller.enqueue(chunk);
-          } catch (err) {
+          } catch {
             // Controller zaten kapalıysa enqueue başarısız olabilir
             closed = true;
           }

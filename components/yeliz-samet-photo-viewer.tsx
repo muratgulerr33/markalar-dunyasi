@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import useEmblaCarousel from "embla-carousel-react";
+import Image from "next/image";
 import { X, MoreVertical, Share2, Download, Trash2 } from "lucide-react";
 import {
   Dialog,
@@ -16,6 +17,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { TapIconButton } from "@/components/ui/tap";
+import { softHaptic } from "@/lib/haptics";
 
 interface YelizSametPhotoViewerProps {
   open: boolean;
@@ -29,6 +32,7 @@ interface YelizSametPhotoViewerProps {
 
 const LONG_PRESS_DURATION = 450;
 const MOVE_THRESHOLD = 10;
+const deleteEnabled = process.env.NEXT_PUBLIC_GUEST_DELETE_ENABLED === "true";
 
 export function YelizSametPhotoViewer({
   open,
@@ -50,6 +54,7 @@ export function YelizSametPhotoViewer({
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const longPressStartRef = useRef<{ x: number; y: number } | null>(null);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const didInitRef = useRef(false);
 
   // Embla API ile index senkronizasyonu
   useEffect(() => {
@@ -75,11 +80,17 @@ export function YelizSametPhotoViewer({
     };
   }, [emblaApi, onIndexChange]);
 
-  // startIndex değiştiğinde embla'yı güncelle
+  // startIndex değiştiğinde embla'yı güncelle - sadece ilk açılışta
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      didInitRef.current = false;
+      return;
+    }
     if (!emblaApi) return;
-    emblaApi.scrollTo(startIndex, true);
+    if (!didInitRef.current) {
+      emblaApi.scrollTo(startIndex, true);
+      didInitRef.current = true;
+    }
     // selectedIndex güncellemesi Embla'nın 'select' event handler'ında yapılıyor
   }, [open, emblaApi, startIndex]);
 
@@ -88,7 +99,7 @@ export function YelizSametPhotoViewer({
     if (!open) return;
 
     const preloadImage = (src: string) => {
-      const img = new Image();
+      const img = document.createElement("img");
       img.src = src;
     };
 
@@ -257,24 +268,28 @@ export function YelizSametPhotoViewer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogOverlay className="bg-black/95" />
+      <DialogOverlay className="viewer-overlay bg-black/95" />
       <DialogContent
-        className="fixed inset-0 left-0 top-0 z-50 h-dvh w-screen max-w-none translate-x-0 translate-y-0 border-0 bg-black/95 p-0 shadow-none [&>button]:hidden"
+        className="viewer-content fixed inset-0 left-0 top-0 z-50 h-dvh w-screen max-w-none translate-x-0 translate-y-0 border-0 bg-black/95 p-0 shadow-none [&>button]:hidden"
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogTitle className="sr-only">Fotoğraf görüntüleyici</DialogTitle>
         <div className="relative h-dvh w-screen">
           {/* Üst bar */}
           <div className="absolute left-0 top-0 z-10 flex w-full items-center justify-between px-3 py-3 safe-area-top">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-11 w-11 text-white hover:bg-white/20"
-              onClick={() => onOpenChange(false)}
-              aria-label="Kapat"
-            >
-              <X className="h-5 w-5" />
-            </Button>
+            <TapIconButton asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11 text-white hover:bg-white/20"
+                onClick={() => {
+                  onOpenChange(false);
+                }}
+                aria-label="Kapat"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </TapIconButton>
 
             <div className="text-xs text-white/80">
               {selectedIndex + 1} / {items.length}
@@ -282,26 +297,44 @@ export function YelizSametPhotoViewer({
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  ref={menuTriggerRef}
-                  variant="ghost"
-                  size="icon"
-                  className="h-11 w-11 text-white hover:bg-white/20"
-                >
-                  <MoreVertical className="h-5 w-5" />
-                </Button>
+                <TapIconButton asChild>
+                  <Button
+                    ref={menuTriggerRef}
+                    variant="ghost"
+                    size="icon"
+                    className="h-11 w-11 text-white hover:bg-white/20"
+                  >
+                    <MoreVertical className="h-5 w-5" />
+                  </Button>
+                </TapIconButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleShare}>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    softHaptic();
+                    handleShare();
+                  }}
+                >
                   <Share2 className="mr-2 h-4 w-4" />
                   Paylaş
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleDownload}>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    softHaptic();
+                    handleDownload();
+                  }}
+                >
                   <Download className="mr-2 h-4 w-4" />
                   İndir
                 </DropdownMenuItem>
-                {albumSlug && (
-                  <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive">
+                {albumSlug && deleteEnabled && (
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      softHaptic();
+                      handleDelete();
+                    }} 
+                    className="text-destructive focus:text-destructive"
+                  >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Sil
                   </DropdownMenuItem>
@@ -317,8 +350,11 @@ export function YelizSametPhotoViewer({
             style={{ touchAction: "pan-y pinch-zoom" }}
           >
             <div
-              className="flex h-full will-change-transform"
-              style={{ transform: "translate3d(0,0,0)" }}
+              className="flex h-full"
+              style={{ 
+                willChange: "transform",
+                transform: "translate3d(0,0,0)",
+              }}
               onPointerDown={handlePointerDown}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerCancel}
@@ -327,16 +363,21 @@ export function YelizSametPhotoViewer({
               {items.map((item, index) => (
                 <div
                   key={`${item}-${index}`}
-                  className="relative flex h-full flex-[0_0_100%] min-w-full items-center justify-center overflow-hidden bg-black pb-6 pt-14"
+                  className="relative flex h-full flex-[0_0_100%] min-w-0 items-center justify-center overflow-hidden bg-black pb-6 pt-14"
                 >
-                  <img
-                    src={`/yeliz-samet/${item}`}
-                    alt=""
-                    className="max-h-[88dvh] max-w-[92vw] object-contain select-none"
-                    loading="eager"
-                    decoding="async"
-                    draggable={false}
-                  />
+                  <div className="relative max-h-[88dvh] max-w-[92vw] w-full h-full">
+                    <Image
+                      src={`/yeliz-samet/${item}`}
+                      alt=""
+                      fill
+                      className="object-contain select-none"
+                      sizes="100vw"
+                      loading={index === selectedIndex ? "eager" : "lazy"}
+                      priority={index === selectedIndex}
+                      style={{ willChange: "opacity" }}
+                      draggable={false}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -345,7 +386,7 @@ export function YelizSametPhotoViewer({
           {/* Alt progress bar */}
           <div className="absolute bottom-4 left-4 right-4 h-1 rounded bg-white/20">
             <div
-              className="h-1 rounded bg-white/70"
+              className="h-1 rounded bg-white/70 progress-bar-fill"
               style={{
                 width: `${items.length ? ((selectedIndex + 1) / items.length) * 100 : 0}%`,
               }}

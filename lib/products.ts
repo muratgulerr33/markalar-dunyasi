@@ -24,7 +24,7 @@ export const mockProducts: Product[] = [
     slug: "gucci-kadin-cantasi",
     title: "Gucci Kadın Çantası",
     price: 15999,
-    images: ["/çanta.webp", "/çanta.png"],
+    images: ["/canta.webp", "/canta.png"],
     colors: [
       { name: "Siyah", valueHex: "#000000" },
       { name: "Kahverengi", valueHex: "#8B4513" },

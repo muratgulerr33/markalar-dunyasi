@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import Image from "next/image"
 import { ChevronLeft, ChevronRight, X } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -16,7 +16,7 @@ const BATCH_SIZE = 40
 const INITIAL_BATCH = 40
 
 export function YelizSametGallery({ images }: YelizSametGalleryProps) {
-  const [visibleImages, setVisibleImages] = useState<string[]>([])
+  const [visibleCount, setVisibleCount] = useState(INITIAL_BATCH)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [lightboxIsDragging, setLightboxIsDragging] = useState(false)
@@ -29,25 +29,19 @@ export function YelizSametGallery({ images }: YelizSametGalleryProps) {
   const lightboxPointerCurrentX = useRef<number | null>(null)
   const lightboxTrackRef = useRef<HTMLDivElement>(null)
 
-  // İlk batch'i yükle
-  useEffect(() => {
-    if (images.length > 0) {
-      setVisibleImages(images.slice(0, INITIAL_BATCH))
-    }
-  }, [images])
+  // Derive visibleImages from visibleCount using useMemo
+  const visibleImages = useMemo(() => {
+    return images.slice(0, visibleCount)
+  }, [images, visibleCount])
 
   // Intersection Observer ile lazy loading
   useEffect(() => {
-    if (!loadMoreRef.current || visibleImages.length >= images.length) return
+    if (!loadMoreRef.current || visibleCount >= images.length) return
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && visibleImages.length < images.length) {
-          const nextBatch = images.slice(
-            visibleImages.length,
-            visibleImages.length + BATCH_SIZE
-          )
-          setVisibleImages((prev) => [...prev, ...nextBatch])
+        if (entries[0].isIntersecting && visibleCount < images.length) {
+          setVisibleCount((prev) => Math.min(prev + BATCH_SIZE, images.length))
         }
       },
       { rootMargin: "200px" }
@@ -60,7 +54,7 @@ export function YelizSametGallery({ images }: YelizSametGalleryProps) {
         observerRef.current.disconnect()
       }
     }
-  }, [visibleImages.length, images])
+  }, [visibleCount, images.length])
 
   const minSwipeDistance = 40
 
@@ -188,7 +182,7 @@ export function YelizSametGallery({ images }: YelizSametGalleryProps) {
   return (
     <>
       {/* Grid Gallery */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 native-scroll" style={{ touchAction: "pan-y" }}>
         {visibleImages.map((image, index) => {
           const globalIndex = images.indexOf(image)
           const isPriority = index < 2 // İlk 2 görsel için priority
@@ -204,6 +198,11 @@ export function YelizSametGallery({ images }: YelizSametGalleryProps) {
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 "group"
               )}
+              style={{
+                contentVisibility: "auto",
+                containIntrinsicSize: "300px 375px",
+                contain: "layout paint style",
+              }}
               aria-label={`Görsel ${globalIndex + 1}'i aç`}
             >
               <Image
@@ -252,6 +251,7 @@ export function YelizSametGallery({ images }: YelizSametGalleryProps) {
             {/* Main Image Area with Swipe - Track Yapısı */}
             <div
               className="flex-1 relative overflow-hidden min-h-0"
+              style={{ touchAction: "pan-x pan-y pinch-zoom" }}
               onPointerDown={onLightboxPointerDown}
               onPointerMove={onLightboxPointerMove}
               onPointerUp={onLightboxPointerUp}
@@ -287,9 +287,10 @@ export function YelizSametGallery({ images }: YelizSametGalleryProps) {
               {/* Track Container */}
               <div
                 ref={lightboxTrackRef}
-                className="relative w-full h-full flex will-change-transform"
+                className="relative w-full h-full flex"
                 style={{
-                  transform: `translateX(calc(-${lightboxIndex * 100}% + ${dragOffset}px))`,
+                  willChange: "transform",
+                  transform: `translate3d(calc(-${lightboxIndex * 100}% + ${dragOffset}px), 0, 0)`,
                   transition: lightboxIsDragging ? 'none' : 'transform 300ms ease-out'
                 }}
               >
@@ -314,7 +315,7 @@ export function YelizSametGallery({ images }: YelizSametGalleryProps) {
             {/* Thumbnail Strip + Progress */}
             {images.length > 1 && (
               <div className="w-full px-4 pb-4 pt-2 bg-black/50">
-                <div className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory max-w-6xl mx-auto mb-3 native-scroll">
+                <div className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory max-w-6xl mx-auto mb-3 native-scroll" style={{ touchAction: "pan-x" }}>
                   {images.map((image, index) => (
                     <button
                       key={image}
@@ -347,9 +348,12 @@ export function YelizSametGallery({ images }: YelizSametGalleryProps) {
                       type="button"
                       onClick={() => handleThumbnailClick(index)}
                       className={cn(
-                        "h-2 rounded-full transition-all min-h-[44px] min-w-[44px] flex items-center justify-center p-2 -m-2",
+                        "h-2 rounded-full transition-all min-h-[44px] min-w-[44px] flex items-center justify-center p-2 -m-2 progress-bar-fill",
                         lightboxIndex === index ? "w-8 bg-primary" : "w-2 bg-white/30"
                       )}
+                      style={{
+                        transition: "width 300ms ease-out, background-color 300ms ease-out",
+                      }}
                       aria-label={`Sayfa ${index + 1}`}
                     >
                       <span className="sr-only">Sayfa {index + 1}</span>

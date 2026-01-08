@@ -1,24 +1,63 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { YelizSametTopbar } from "@/components/yeliz-samet-topbar";
 import { YelizSametMenuDrawer } from "@/components/yeliz-samet-menu-drawer";
 import { Button } from "@/components/ui/button";
+import { TapButton } from "@/components/ui/tap";
 
 const heroImages = [
   "/yeliz-samet/salon-foto/IMG-20260107-WA0182.webp",
-  "/yeliz-samet/salon-foto/IMG-20260107-WA0192.webp",
+  "/yeliz-samet/yat-foto/update-hero.webp",
   "/yeliz-samet/yat-foto/IMG_6614 kopya.webp",
   "/yeliz-samet/yat-foto/IMG_6594.webp",
-  "/yeliz-samet/salon-foto/IMG-20260107-WA0215.webp",
   "/yeliz-samet/yat-foto/IMG_6637 kopya.webp",
 ];
 
 export function YelizSametLandingClient() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set([0]));
+  const imageRefs = useRef<(HTMLImageElement | null)[]>([]);
+
+  // Preload images on idle
+  useEffect(() => {
+    const preloadImage = (src: string) => {
+      const img = document.createElement("img");
+      img.src = src;
+      return new Promise<void>((resolve) => {
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+      });
+    };
+
+    const preloadNextImages = () => {
+      const nextIndices = [
+        (currentImageIndex + 1) % heroImages.length,
+        (currentImageIndex + 2) % heroImages.length,
+        (currentImageIndex + 3) % heroImages.length,
+      ];
+      
+      nextIndices.forEach((idx) => {
+        if (!loadedImages.has(idx)) {
+          preloadImage(heroImages[idx]);
+          setLoadedImages((prev) => new Set([...prev, idx]));
+        }
+      });
+    };
+
+    const schedulePreload = () => {
+      if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+        requestIdleCallback(preloadNextImages, { timeout: 2000 });
+      } else {
+        setTimeout(preloadNextImages, 100);
+      }
+    };
+
+    schedulePreload();
+  }, [currentImageIndex, loadedImages]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -28,36 +67,65 @@ export function YelizSametLandingClient() {
     return () => clearInterval(interval);
   }, []);
 
+  // Preload first hero image
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
+    link.href = heroImages[0];
+    link.type = "image/webp";
+    link.setAttribute("fetchpriority", "high");
+    document.head.appendChild(link);
+
+    return () => {
+      if (document.head.contains(link)) {
+        document.head.removeChild(link);
+      }
+    };
+  }, []);
+
   return (
     <>
       <YelizSametTopbar onMenuClick={() => setMenuOpen(true)} />
       
       {/* Hero Section */}
-      <section className="relative w-full min-h-[calc(100svh-3.5rem-env(safe-area-inset-top))] overflow-hidden pt-[calc(3.5rem+env(safe-area-inset-top))]">
+      <section className="relative w-full min-h-[calc(100svh-3.5rem-env(safe-area-inset-top))] overflow-hidden pt-[calc(3.5rem+env(safe-area-inset-top))] flex flex-col justify-end">
         {heroImages.map((src, index) => (
           <div
             key={src}
-            className={`absolute inset-0 transition-opacity duration-700 ease-out ${
+            className={`absolute inset-0 hero-slide ${
               index === currentImageIndex ? "opacity-100" : "opacity-0"
             }`}
+            style={{
+              willChange: "opacity",
+            }}
           >
-            <Image
+            <img
+              ref={(el) => {
+                imageRefs.current[index] = el;
+              }}
               src={src}
               alt="Yeliz & Samet"
-              fill
-              priority={index === 0}
-              className="object-cover"
-              sizes="100vw"
+              className={`absolute inset-0 h-full w-full ${index === 1 ? "object-contain" : "object-cover"} object-center`}
+              loading={index === 0 ? "eager" : "lazy"}
+              decoding="async"
+              fetchPriority={index === 0 ? "high" : "auto"}
+              draggable={false}
+              onLoad={() => {
+                if (index === currentImageIndex) {
+                  setLoadedImages((prev) => new Set([...prev, index]));
+                }
+              }}
             />
           </div>
         ))}
         {/* Fixed overlay - sabit katman (slide başına değil, flicker olmaması için) */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/20 to-black/70 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/35 to-black/80 pointer-events-none" />
         
         {/* Hero Content - Alt bölgeye taşındı */}
-        <div className="relative z-10 h-full flex flex-col items-center justify-end px-4 pb-[calc(env(safe-area-inset-bottom)+72px)] pt-16 text-center">
+        <div className="relative z-10 flex flex-col items-center justify-end px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] text-center">
           {/* Glass Panel */}
-          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-black/50 backdrop-blur-xl shadow-2xl p-6 md:p-8 space-y-4">
+          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-black/60 shadow-2xl p-6 md:p-8 space-y-4">
             <div className="relative z-10">
               <h1 className="text-4xl md:text-6xl font-bold mb-3 text-white tracking-tight drop-shadow-lg">
                 Yeliz & Samet
@@ -66,21 +134,25 @@ export function YelizSametLandingClient() {
                 7 Ocak 2026 • Akdeniz Belediyesi Nikah Dairesi
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button
-                  asChild
-                  size="lg"
-                  className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm"
-                >
-                  <Link href="/yeliz-samet/salon">Salon Albümü</Link>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="flex-1 bg-white/5 hover:bg-white/10 text-white border-white/20 backdrop-blur-sm"
-                >
-                  <Link href="/yeliz-samet/yat">Yat Albümü</Link>
-                </Button>
+                <TapButton asChild>
+                  <Button
+                    asChild
+                    size="lg"
+                    className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm"
+                  >
+                    <Link href="/yeliz-samet/salon">Salon Albümü</Link>
+                  </Button>
+                </TapButton>
+                <TapButton asChild>
+                  <Button
+                    asChild
+                    size="lg"
+                    variant="outline"
+                    className="flex-1 bg-white/5 hover:bg-white/10 text-white border-white/20 backdrop-blur-sm"
+                  >
+                    <Link href="/yeliz-samet/yat">Yat Albümü</Link>
+                  </Button>
+                </TapButton>
               </div>
             </div>
           </div>
@@ -95,7 +167,7 @@ export function YelizSametLandingClient() {
           </h2>
           <div className="space-y-6">
             {/* Timeline Card 1 */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
                   <span className="text-xl">💍</span>
@@ -109,7 +181,7 @@ export function YelizSametLandingClient() {
             </div>
 
             {/* Timeline Card 2 */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
                   <span className="text-xl">⛵</span>
@@ -122,7 +194,7 @@ export function YelizSametLandingClient() {
             </div>
 
             {/* Timeline Card 3 */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
                   <span className="text-xl">✨</span>
@@ -147,7 +219,7 @@ export function YelizSametLandingClient() {
             {/* Salon Album Card */}
             <Link
               href="/yeliz-samet/salon"
-              className="group bg-white/5 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-sm hover:bg-white/10 transition-all hover:border-white/20"
+              className="group bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:bg-white/10 transition-all hover:border-white/20"
             >
               <div className="relative aspect-[4/3] overflow-hidden">
                 <Image
@@ -170,7 +242,7 @@ export function YelizSametLandingClient() {
             {/* Yat Album Card */}
             <Link
               href="/yeliz-samet/yat"
-              className="group bg-white/5 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-sm hover:bg-white/10 transition-all hover:border-white/20"
+              className="group bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:bg-white/10 transition-all hover:border-white/20"
             >
               <div className="relative aspect-[4/3] overflow-hidden">
                 <Image

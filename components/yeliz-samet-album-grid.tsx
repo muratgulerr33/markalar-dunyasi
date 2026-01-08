@@ -2,9 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { TapButton } from "@/components/ui/tap";
 import { YelizSametPhotoViewer } from "@/components/yeliz-samet-photo-viewer";
-import { Check, Circle } from "lucide-react";
+import { softHaptic } from "@/lib/haptics";
+import { Check } from "lucide-react";
 
 interface YelizSametAlbumGridProps {
   items: string[];
@@ -30,7 +33,6 @@ export function YelizSametAlbumGrid({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
-  const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
   const [internalSelectionMode, setInternalSelectionMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -80,10 +82,12 @@ export function YelizSametAlbumGrid({
 
   const openViewerAt = useCallback((index: number) => {
     if (selectionModeRef.current) return;
+    softHaptic(); // Haptic feedback when opening viewer
     setViewerIndex(index);
-    setViewerOpen(true);
     const item = filteredItems[index];
-    router.push(`${pathname}?photo=${encodeURIComponent(item)}`, { scroll: false });
+    // İlk açılışta router.push kullan (shareable URL, useSearchParams güncellenir)
+    const newUrl = `${pathname}?photo=${encodeURIComponent(item)}`;
+    router.push(newUrl, { scroll: false });
   }, [filteredItems, pathname, router]);
 
   const toggleSelection = (item: string) => {
@@ -159,33 +163,33 @@ export function YelizSametAlbumGrid({
     };
   }, [downloadRef, downloadSelected]);
 
-  const handleSelectionModeToggle = () => {
-    const newMode = !selectionMode;
-    if (externalSelectionMode === undefined) {
-      setInternalSelectionMode(newMode);
-    }
-    onSelectionModeChange?.(newMode);
-    if (!newMode) {
-      setSelected(new Set());
-    }
-  };
+  const closeViewer = useCallback(() => {
+    // URL'den photo param'ını kaldır, diğer param'ları koru
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("photo");
+    const preservedParams = params.toString();
+    const newUrl = preservedParams 
+      ? `${pathname}?${preservedParams}`
+      : pathname;
+    // Next.js App Router'da router.replace kullan ki useSearchParams() güncellensin
+    router.replace(newUrl, { scroll: false });
+  }, [pathname, searchParams, router]);
 
-  const closeViewer = () => {
-    setViewerOpen(false);
-    router.replace(pathname, { scroll: false });
-  };
-
+  // URL'den viewer state'ini türet (photo param'ına %100 senkron)
+  const photoParam = searchParams.get("photo");
+  const viewerOpen = !!photoParam;
+  
   // URL'den açılma (sayfa refresh / link paylaşımı için)
   useEffect(() => {
-    const p = searchParams.get("photo");
-    if (!p) return;
-    const decoded = decodeURIComponent(p);
+    if (!photoParam) {
+      return;
+    }
+    const decoded = decodeURIComponent(photoParam);
     const idx = filteredItems.findIndex((x) => x === decoded);
     if (idx >= 0) {
       setViewerIndex(idx);
-      setViewerOpen(true);
     }
-  }, [searchParams, filteredItems]);
+  }, [photoParam, filteredItems]);
 
   // Handle item deletion from viewer
   const handleItemDeleted = useCallback((filename: string) => {
@@ -206,7 +210,7 @@ export function YelizSametAlbumGrid({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 native-scroll" style={{ touchAction: "pan-y" }}>
       <div className="grid grid-cols-3 gap-3 md:grid-cols-4 lg:grid-cols-5">
         {visibleItems.map((item, visibleIndex) => {
           const realIndex = filteredItems.indexOf(item);
@@ -222,6 +226,11 @@ export function YelizSametAlbumGrid({
                     : "hover:opacity-90"
                   : ""
               }`}
+              style={{
+                contentVisibility: "auto",
+                containIntrinsicSize: "300px 300px",
+                contain: "layout paint style",
+              }}
               onClick={(e) => {
                 if (selectionModeRef.current) {
                   e.preventDefault();
@@ -232,15 +241,17 @@ export function YelizSametAlbumGrid({
                 }
               }}
             >
-              <img
+              <Image
                 src={imagePath}
                 alt={`Fotoğraf ${realIndex + 1}`}
-                className="h-full w-full object-cover"
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
                 loading={visibleIndex < INITIAL_COUNT ? "eager" : "lazy"}
-                decoding="async"
+                priority={visibleIndex < 2}
               />
               {selectionMode && (
-                <div className="absolute top-2 right-2 z-10 flex items-center justify-center w-6 h-6 rounded-full border-2 border-white/80 bg-black/50 backdrop-blur-sm">
+                <div className="absolute top-2 right-2 z-10 flex items-center justify-center w-6 h-6 rounded-full border-2 border-white/80 bg-black/60">
                   {isSelected ? (
                     <Check className="h-4 w-4 text-white" strokeWidth={3} />
                   ) : (
@@ -255,38 +266,50 @@ export function YelizSametAlbumGrid({
 
       {hasMore && !selectionMode && (
         <div className="flex justify-center py-4">
-          <Button variant="outline" onClick={handleLoadMore}>
-            Daha fazla yükle ({filteredItems.length - visibleCount} kaldı)
-          </Button>
+          <TapButton asChild>
+            <Button variant="outline" onClick={handleLoadMore}>
+              Daha fazla yükle ({filteredItems.length - visibleCount} kaldı)
+            </Button>
+          </TapButton>
         </div>
       )}
 
       {selectionMode && (
-        <div className="sticky bottom-0 z-30 -mx-4 -mb-6 mt-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t px-4 py-3">
+        <div className="sticky bottom-0 z-30 -mx-4 -mb-6 mt-6 bg-background/95 border-t px-4 py-3">
           <div className="flex items-center justify-between gap-4">
-            <Button variant="outline" onClick={handleSelectAll} size="sm">
-              Tümünü seç
-            </Button>
-            <Button
-              variant="default"
-              onClick={downloadSelected}
-              disabled={selected.size === 0 || downloadingSelected}
-              size="sm"
-            >
-              {downloadingSelected
-                ? "İndiriliyor..."
-                : `Seçilenleri indir (${selected.size})`}
-            </Button>
-            <Button variant="outline" onClick={handleClearSelection} size="sm">
-              Temizle
-            </Button>
+            <TapButton asChild>
+              <Button variant="outline" onClick={handleSelectAll} size="sm">
+                Tümünü seç
+              </Button>
+            </TapButton>
+            <TapButton asChild>
+              <Button
+                variant="default"
+                onClick={downloadSelected}
+                disabled={selected.size === 0 || downloadingSelected}
+                size="sm"
+              >
+                {downloadingSelected
+                  ? "İndiriliyor..."
+                  : `Seçilenleri indir (${selected.size})`}
+              </Button>
+            </TapButton>
+            <TapButton asChild>
+              <Button variant="outline" onClick={handleClearSelection} size="sm">
+                Temizle
+              </Button>
+            </TapButton>
           </div>
         </div>
       )}
 
       <YelizSametPhotoViewer
         open={viewerOpen}
-        onOpenChange={(o) => (o ? setViewerOpen(true) : closeViewer())}
+        onOpenChange={(o) => {
+          if (!o) {
+            closeViewer();
+          }
+        }}
         items={filteredItems}
         startIndex={viewerIndex}
         albumSlug={albumSlug}
@@ -294,7 +317,9 @@ export function YelizSametAlbumGrid({
         onIndexChange={(idx) => {
           setViewerIndex(idx);
           const item = filteredItems[idx];
-          router.replace(`${pathname}?photo=${encodeURIComponent(item)}`, { scroll: false });
+          // Foto geçişlerinde router.replace kullan (useSearchParams güncellenir, scroll:false ile jank yok)
+          const newUrl = `${pathname}?photo=${encodeURIComponent(item)}`;
+          router.replace(newUrl, { scroll: false });
         }}
       />
     </div>

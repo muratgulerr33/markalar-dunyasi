@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { TapButton } from "@/components/ui/tap";
 import {
   Sheet,
   SheetContent,
@@ -82,7 +83,7 @@ export function YelizSametMenuDrawer({
     if (navigator.share) {
       try {
         await navigator.share(shareData);
-      } catch (error) {
+      } catch {
         // Kullanıcı paylaşmayı iptal etti veya hata oluştu
         console.log("Paylaşım iptal edildi veya desteklenmiyor");
       }
@@ -109,65 +110,66 @@ export function YelizSametMenuDrawer({
         </SheetHeader>
         <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6 native-scroll scrollbar-none">
           <div className="space-y-3">
-            <Button
-              variant="outline"
-              className="h-11 w-full rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-100 px-4 text-[15px] font-medium justify-start"
-              onClick={() => handleNavigate("/yeliz-samet")}
-            >
-              Anasayfa
-            </Button>
-            <Button
-              variant="outline"
-              className="h-11 w-full rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-100 px-4 text-[15px] font-medium justify-start"
-              onClick={() => handleNavigate("/yeliz-samet/salon")}
-            >
-              Salon Fotoğrafları
-            </Button>
-            <Button
-              variant="outline"
-              className="h-11 w-full rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-100 px-4 text-[15px] font-medium justify-start"
-              onClick={() => handleNavigate("/yeliz-samet/yat")}
-            >
-              Yat Fotoğrafları
-            </Button>
+            <TapButton asChild>
+              <Button
+                variant="outline"
+                className="h-11 w-full rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-100 px-4 text-[15px] font-medium justify-start"
+                onClick={() => handleNavigate("/yeliz-samet/salon")}
+              >
+                Salon Fotoğrafları
+              </Button>
+            </TapButton>
+            <TapButton asChild>
+              <Button
+                variant="outline"
+                className="h-11 w-full rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-100 px-4 text-[15px] font-medium justify-start"
+                onClick={() => handleNavigate("/yeliz-samet/yat")}
+              >
+                Yat Fotoğrafları
+              </Button>
+            </TapButton>
           </div>
           <div className="mt-3 space-y-3">
-            <Button
-              variant="outline"
-              className="h-11 w-full rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-100 px-4 text-[15px] font-medium justify-start"
-              onClick={() => handleDownloadZip("salon")}
-              disabled={downloadingSalon}
-            >
-              {downloadingSalon ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  İndiriliyor...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4" />
-                  Salon ZIP indir
-                </>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              className="h-11 w-full rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-100 px-4 text-[15px] font-medium justify-start"
-              onClick={() => handleDownloadZip("yat")}
-              disabled={downloadingYat}
-            >
-              {downloadingYat ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  İndiriliyor...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4" />
-                  Yat ZIP indir
-                </>
-              )}
-            </Button>
+            <TapButton asChild>
+              <Button
+                variant="outline"
+                className="h-11 w-full rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-100 px-4 text-[15px] font-medium justify-start"
+                onClick={() => handleDownloadZip("salon")}
+                disabled={downloadingSalon}
+              >
+                {downloadingSalon ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    İndiriliyor...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Salon ZIP indir
+                  </>
+                )}
+              </Button>
+            </TapButton>
+            <TapButton asChild>
+              <Button
+                variant="outline"
+                className="h-11 w-full rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-100 px-4 text-[15px] font-medium justify-start"
+                onClick={() => handleDownloadZip("yat")}
+                disabled={downloadingYat}
+              >
+                {downloadingYat ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    İndiriliyor...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Yat ZIP indir
+                  </>
+                )}
+              </Button>
+            </TapButton>
           </div>
           <div className="mt-4 pt-4 border-t border-white/10">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-1.5 text-sm leading-6 text-zinc-200/90 whitespace-normal break-words">
@@ -178,14 +180,16 @@ export function YelizSametMenuDrawer({
           </div>
         </div>
         <div className="shrink-0 px-6 pt-6 pb-[calc(env(safe-area-inset-bottom)+16px)] border-t border-border bg-black/60 backdrop-blur">
-          <Button
-            variant="default"
-            onClick={handleShare}
-            className="h-11 w-full rounded-2xl gap-2"
-          >
-            <Share2 className="h-4 w-4" />
-            {shareCopied ? "Link kopyalandı!" : "Albümü Paylaş"}
-          </Button>
+          <TapButton asChild>
+            <Button
+              variant="default"
+              onClick={handleShare}
+              className="h-11 w-full rounded-2xl gap-2"
+            >
+              <Share2 className="h-4 w-4" />
+              {shareCopied ? "Link kopyalandı!" : "Albümü Paylaş"}
+            </Button>
+          </TapButton>
         </div>
       </SheetContent>
     </Sheet>

@@ -42,7 +42,7 @@ export default function Home() {
       name: "Gucci Kadın Çantası",
       description: "Premium deri, şık tasarım",
       price: "₺15.999",
-      image: "/çanta.webp",
+      image: "/canta.webp",
       slug: "gucci-kadin-cantasi",
     },
     {

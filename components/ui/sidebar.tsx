@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 
-interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
+type SidebarProps = React.HTMLAttributes<HTMLDivElement>
 
 const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
   ({ className, ...props }, ref) => {
@@ -74,7 +74,7 @@ const SidebarFooter = React.forwardRef<
 })
 SidebarFooter.displayName = "SidebarFooter"
 
-interface SidebarMenuProps extends React.HTMLAttributes<HTMLUListElement> {}
+type SidebarMenuProps = React.HTMLAttributes<HTMLUListElement>
 
 const SidebarMenu = React.forwardRef<HTMLUListElement, SidebarMenuProps>(
   ({ className, ...props }, ref) => {
@@ -89,7 +89,7 @@ const SidebarMenu = React.forwardRef<HTMLUListElement, SidebarMenuProps>(
 )
 SidebarMenu.displayName = "SidebarMenu"
 
-interface SidebarMenuItemProps extends React.HTMLAttributes<HTMLLIElement> {}
+type SidebarMenuItemProps = React.HTMLAttributes<HTMLLIElement>
 
 const SidebarMenuItem = React.forwardRef<HTMLLIElement, SidebarMenuItemProps>(
   ({ className, ...props }, ref) => {

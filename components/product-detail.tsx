@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { ChevronRight, ChevronDown } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -25,25 +25,17 @@ export function ProductDetail({
   const [drawerOpen, setDrawerOpen] = useState(false)
   const addItem = useCartStore((state) => state.addItem)
 
-  useEffect(() => {
-    // Set first available color and size as default
-    if (product && !selectedColor && product.colors.length > 0) {
-      setSelectedColor(product.colors[0])
-    }
-    if (product && !selectedSize && product.sizes.length > 0) {
-      const firstAvailable = product.sizes.find((s) => s.available)
-      if (firstAvailable) {
-        setSelectedSize(firstAvailable)
-      }
-    }
-  }, [product, selectedColor, selectedSize])
+  // Derive effective values instead of setting defaults in useEffect
+  const effectiveColor = selectedColor ?? (product?.colors?.[0] ?? null)
+  const firstAvailableSize = product?.sizes.find((s) => s.available) ?? null
+  const effectiveSize = selectedSize ?? firstAvailableSize
 
-  const canAddToCart = selectedColor !== null && selectedSize !== null
+  const canAddToCart = effectiveColor !== null && effectiveSize !== null
 
   const handleAddToCart = () => {
     if (!canAddToCart || !product) return
 
-    const variant = `${selectedColor?.name} / ${selectedSize?.label}`
+    const variant = `${effectiveColor?.name} / ${effectiveSize?.label}`
     addItem({
       title: product.title,
       price: product.price,
@@ -100,7 +92,7 @@ export function ProductDetail({
       {/* Color Selection */}
       <div className="space-y-3">
         <label className="text-sm font-medium">
-          Renk: {selectedColor ? selectedColor.name : "Seçiniz"}
+          Renk: {effectiveColor ? effectiveColor.name : "Seçiniz"}
         </label>
         <div className="flex gap-3 flex-wrap">
           {product.colors.map((color) => (
@@ -111,11 +103,11 @@ export function ProductDetail({
               className={cn(
                 "h-11 w-11 rounded-full ring-1 ring-border/60 transition-all",
                 "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                selectedColor?.name === color.name && "ring-2 ring-primary"
+                effectiveColor?.name === color.name && "ring-2 ring-primary"
               )}
               style={{ backgroundColor: color.valueHex }}
               aria-label={`Renk: ${color.name}`}
-              aria-pressed={selectedColor?.name === color.name}
+              aria-pressed={effectiveColor?.name === color.name}
             />
           ))}
         </div>
@@ -124,7 +116,7 @@ export function ProductDetail({
       {/* Size Selection */}
       <div className="space-y-3">
         <label className="text-sm font-medium">
-          Beden: {selectedSize ? selectedSize.label : "Seçiniz"}
+          Beden: {effectiveSize ? effectiveSize.label : "Seçiniz"}
         </label>
         <div className="flex gap-3 flex-wrap">
           {product.sizes.map((size) => (
@@ -136,13 +128,13 @@ export function ProductDetail({
               className={cn(
                 "min-h-[44px] px-4 rounded-xl border transition-all",
                 "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                selectedSize?.label === size.label
+                effectiveSize?.label === size.label
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-background hover:bg-accent border-border",
                 !size.available && "opacity-50 pointer-events-none"
               )}
               aria-label={`Beden: ${size.label}${!size.available ? " (Stokta yok)" : ""}`}
-              aria-pressed={selectedSize?.label === size.label}
+              aria-pressed={effectiveSize?.label === size.label}
             >
               {size.label}
             </button>

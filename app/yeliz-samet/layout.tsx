@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 
 export default function YelizSametLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="dark bg-black text-white min-h-screen native-scroll">
+    <div className="yeliz-samet-scope dark bg-black text-white min-h-screen native-scroll">
       <NavDirectionProvider>{children}</NavDirectionProvider>
     </div>
   );

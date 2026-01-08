@@ -21,26 +21,21 @@ export function ProductGallery({ images, title }: ProductGalleryProps) {
   const [dragOffset, setDragOffset] = useState(0)
   const touchStartX = useRef<number | null>(null)
   const touchEndX = useRef<number | null>(null)
-  const pointerStartX = useRef<number | null>(null)
-  const pointerEndX = useRef<number | null>(null)
   const lightboxTouchStartX = useRef<number | null>(null)
   const lightboxTouchEndX = useRef<number | null>(null)
   const lightboxPointerStartX = useRef<number | null>(null)
   const lightboxPointerCurrentX = useRef<number | null>(null)
   const lightboxTrackRef = useRef<HTMLDivElement>(null)
 
-  if (images.length === 0) {
-    return null
-  }
-
   const minSwipeDistance = 40
 
   // Lightbox açıldığında seçili index'i senkronize et
-  useEffect(() => {
-    if (lightboxOpen) {
+  const handleLightboxOpenChange = (open: boolean) => {
+    setLightboxOpen(open)
+    if (open) {
       setLightboxIndex(selectedIndex)
     }
-  }, [lightboxOpen, selectedIndex])
+  }
 
   // ESC tuşu ile lightbox'ı kapat ve ok tuşları ile navigasyon
   useEffect(() => {
@@ -60,6 +55,10 @@ export function ProductGallery({ images, title }: ProductGalleryProps) {
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [lightboxOpen, images.length])
+
+  if (images.length === 0) {
+    return null
+  }
 
   const onTouchStart = (e: React.TouchEvent) => {
     touchEndX.current = null
@@ -265,7 +264,7 @@ export function ProductGallery({ images, title }: ProductGalleryProps) {
       </div>
 
       {/* Fullscreen Lightbox */}
-      <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+      <Dialog open={lightboxOpen} onOpenChange={handleLightboxOpenChange}>
         <DialogContent className="max-w-[100vw] max-h-[100vh] w-full h-full p-0 gap-0 rounded-none border-0 bg-black/95 left-0 top-0 translate-x-0 translate-y-0">
           <VisuallyHidden.Root>
             <DialogTitle>Ürün görsel galerisi</DialogTitle>
