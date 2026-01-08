@@ -35,6 +35,7 @@ export function YelizSametAlbumGrid({
   const [internalSelectionMode, setInternalSelectionMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [downloadingSelected, setDownloadingSelected] = useState(false);
+  const [deletedFiles, setDeletedFiles] = useState<Set<string>>(new Set());
   
   // External selectionMode prop'u varsa onu kullan, yoksa internal state'i kullan
   const selectionMode = externalSelectionMode !== undefined ? externalSelectionMode : internalSelectionMode;
@@ -45,8 +46,33 @@ export function YelizSametAlbumGrid({
     selectionModeRef.current = selectionMode;
   }, [selectionMode]);
 
-  const visibleItems = items.slice(0, visibleCount);
-  const hasMore = visibleCount < items.length;
+  // Fetch deleted files for this album
+  useEffect(() => {
+    if (!albumSlug) return;
+
+    const fetchDeleted = async () => {
+      try {
+        const response = await fetch(`/api/yeliz-samet/deleted?albumSlug=${albumSlug}`);
+        if (response.ok) {
+          const data = await response.json();
+          setDeletedFiles(new Set(data.deleted || []));
+        }
+      } catch (error) {
+        console.error("Deleted files fetch error:", error);
+      }
+    };
+
+    fetchDeleted();
+  }, [albumSlug]);
+
+  // Filter out deleted items
+  const filteredItems = items.filter((item) => {
+    const filename = item.split("/").pop() || item;
+    return !deletedFiles.has(filename);
+  });
+
+  const visibleItems = filteredItems.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredItems.length;
 
   const handleLoadMore = () => {
     setVisibleCount((prev) => Math.min(prev + LOAD_MORE_COUNT, items.length));
@@ -56,9 +82,9 @@ export function YelizSametAlbumGrid({
     if (selectionModeRef.current) return;
     setViewerIndex(index);
     setViewerOpen(true);
-    const item = items[index];
+    const item = filteredItems[index];
     router.push(`${pathname}?photo=${encodeURIComponent(item)}`, { scroll: false });
-  }, [items, pathname, router]);
+  }, [filteredItems, pathname, router]);
 
   const toggleSelection = (item: string) => {
     setSelected((prev) => {
@@ -73,7 +99,7 @@ export function YelizSametAlbumGrid({
   };
 
   const handleSelectAll = () => {
-    setSelected(new Set(items));
+    setSelected(new Set(filteredItems));
   };
 
   const handleClearSelection = () => {
@@ -154,14 +180,24 @@ export function YelizSametAlbumGrid({
     const p = searchParams.get("photo");
     if (!p) return;
     const decoded = decodeURIComponent(p);
-    const idx = items.findIndex((x) => x === decoded);
+    const idx = filteredItems.findIndex((x) => x === decoded);
     if (idx >= 0) {
       setViewerIndex(idx);
       setViewerOpen(true);
     }
-  }, [searchParams, items]);
+  }, [searchParams, filteredItems]);
 
-  if (items.length === 0) {
+  // Handle item deletion from viewer
+  const handleItemDeleted = useCallback((filename: string) => {
+    const fileKey = filename.split("/").pop() || filename;
+    setDeletedFiles((prev) => {
+      const next = new Set(prev);
+      next.add(fileKey);
+      return next;
+    });
+  }, []);
+
+  if (filteredItems.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <p className="text-muted-foreground">Bu albüm henüz yüklenmedi</p>
@@ -173,7 +209,7 @@ export function YelizSametAlbumGrid({
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-3 md:grid-cols-4 lg:grid-cols-5">
         {visibleItems.map((item, visibleIndex) => {
-          const realIndex = items.indexOf(item);
+          const realIndex = filteredItems.indexOf(item);
           const imagePath = `/yeliz-samet/${item}`;
           const isSelected = selected.has(item);
           return (
@@ -220,7 +256,7 @@ export function YelizSametAlbumGrid({
       {hasMore && !selectionMode && (
         <div className="flex justify-center py-4">
           <Button variant="outline" onClick={handleLoadMore}>
-            Daha fazla yükle ({items.length - visibleCount} kaldı)
+            Daha fazla yükle ({filteredItems.length - visibleCount} kaldı)
           </Button>
         </div>
       )}
@@ -251,12 +287,13 @@ export function YelizSametAlbumGrid({
       <YelizSametPhotoViewer
         open={viewerOpen}
         onOpenChange={(o) => (o ? setViewerOpen(true) : closeViewer())}
-        items={items}
+        items={filteredItems}
         startIndex={viewerIndex}
         albumSlug={albumSlug}
+        onItemDeleted={handleItemDeleted}
         onIndexChange={(idx) => {
           setViewerIndex(idx);
-          const item = items[idx];
+          const item = filteredItems[idx];
           router.replace(`${pathname}?photo=${encodeURIComponent(item)}`, { scroll: false });
         }}
       />

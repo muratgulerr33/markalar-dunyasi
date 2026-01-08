@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import { X, MoreVertical, Share2, Download } from "lucide-react";
+import { X, MoreVertical, Share2, Download, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,8 +22,9 @@ interface YelizSametPhotoViewerProps {
   onOpenChange: (open: boolean) => void;
   items: string[];
   startIndex: number;
-  albumSlug?: "salon" | "yat";
   onIndexChange?: (index: number) => void;
+  albumSlug?: "salon" | "yat";
+  onItemDeleted?: (filename: string) => void;
 }
 
 const LONG_PRESS_DURATION = 450;
@@ -34,8 +35,9 @@ export function YelizSametPhotoViewer({
   onOpenChange,
   items,
   startIndex,
-  albumSlug,
   onIndexChange,
+  albumSlug,
+  onItemDeleted,
 }: YelizSametPhotoViewerProps) {
   const [selectedIndex, setSelectedIndex] = useState(startIndex);
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -78,7 +80,7 @@ export function YelizSametPhotoViewer({
     if (!open) return;
     if (!emblaApi) return;
     emblaApi.scrollTo(startIndex, true);
-    setSelectedIndex(startIndex);
+    // selectedIndex güncellemesi Embla'nın 'select' event handler'ında yapılıyor
   }, [open, emblaApi, startIndex]);
 
   // Komşu fotoğrafları preload et
@@ -168,7 +170,6 @@ export function YelizSametPhotoViewer({
 
   // Paylaş fonksiyonu
   const handleShare = useCallback(async () => {
-    const currentUrl = window.location.href;
     const imageUrl = `${window.location.origin}/yeliz-samet/${items[selectedIndex]}`;
 
     if (navigator.share) {
@@ -178,7 +179,7 @@ export function YelizSametPhotoViewer({
           text: "Fotoğrafı paylaş",
           url: imageUrl,
         });
-      } catch (err) {
+      } catch {
         // Kullanıcı paylaşımı iptal etti veya hata oluştu
         console.log("Paylaşım iptal edildi");
       }
@@ -204,22 +205,73 @@ export function YelizSametPhotoViewer({
     document.body.removeChild(a);
   }, [items, selectedIndex]);
 
+  // Sil fonksiyonu
+  const handleDelete = useCallback(async () => {
+    if (!albumSlug) return;
+
+    const currentItem = items[selectedIndex];
+    const filename = currentItem.split("/").pop() || currentItem;
+
+    // Native confirm dialog
+    const confirmed = window.confirm("Bu fotoğrafı silmek istediğinize emin misiniz?");
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch("/api/yeliz-samet/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          albumSlug,
+          filename,
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          alert("Silme özelliği şu anda devre dışı.");
+        } else {
+          throw new Error("Silme işlemi başarısız");
+        }
+        return;
+      }
+
+      // Optimistic update: item'ı listeden kaldır
+      onItemDeleted?.(currentItem);
+
+      // Eğer silinen item son item ise, bir öncekine geç
+      if (selectedIndex >= items.length - 1 && selectedIndex > 0) {
+        onIndexChange?.(selectedIndex - 1);
+      }
+
+      // Eğer listede item kalmadıysa viewer'ı kapat
+      if (items.length === 1) {
+        onOpenChange(false);
+      }
+    } catch (error) {
+      console.error("Silme hatası:", error);
+      alert("Silme işlemi sırasında bir hata oluştu");
+    }
+  }, [albumSlug, items, selectedIndex, onItemDeleted, onIndexChange, onOpenChange]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogOverlay className="bg-black/95" />
       <DialogContent
-        className="fixed inset-0 left-0 top-0 z-50 h-dvh w-screen max-w-none translate-x-0 translate-y-0 border-0 bg-black/95 p-0 shadow-none"
+        className="fixed inset-0 left-0 top-0 z-50 h-dvh w-screen max-w-none translate-x-0 translate-y-0 border-0 bg-black/95 p-0 shadow-none [&>button]:hidden"
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogTitle className="sr-only">Fotoğraf görüntüleyici</DialogTitle>
         <div className="relative h-dvh w-screen">
           {/* Üst bar */}
-          <div className="absolute left-0 top-0 z-10 flex w-full items-center justify-between px-3 py-3">
+          <div className="absolute left-0 top-0 z-10 flex w-full items-center justify-between px-3 py-3 safe-area-top">
             <Button
               variant="ghost"
               size="icon"
-              className="text-white hover:bg-white/20"
+              className="h-11 w-11 text-white hover:bg-white/20"
               onClick={() => onOpenChange(false)}
+              aria-label="Kapat"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -234,7 +286,7 @@ export function YelizSametPhotoViewer({
                   ref={menuTriggerRef}
                   variant="ghost"
                   size="icon"
-                  className="text-white hover:bg-white/20"
+                  className="h-11 w-11 text-white hover:bg-white/20"
                 >
                   <MoreVertical className="h-5 w-5" />
                 </Button>
@@ -248,6 +300,12 @@ export function YelizSametPhotoViewer({
                   <Download className="mr-2 h-4 w-4" />
                   İndir
                 </DropdownMenuItem>
+                {albumSlug && (
+                  <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Sil
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -259,7 +317,8 @@ export function YelizSametPhotoViewer({
             style={{ touchAction: "pan-y pinch-zoom" }}
           >
             <div
-              className="flex h-full"
+              className="flex h-full will-change-transform"
+              style={{ transform: "translate3d(0,0,0)" }}
               onPointerDown={handlePointerDown}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerCancel}
@@ -268,7 +327,7 @@ export function YelizSametPhotoViewer({
               {items.map((item, index) => (
                 <div
                   key={`${item}-${index}`}
-                  className="relative flex h-full flex-[0_0_100%] items-center justify-center px-4 pb-6 pt-14"
+                  className="relative flex h-full flex-[0_0_100%] min-w-full items-center justify-center overflow-hidden bg-black pb-6 pt-14"
                 >
                   <img
                     src={`/yeliz-samet/${item}`}
