@@ -1,0 +1,204 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { YelizSametTopbar } from "@/components/yeliz-samet-topbar";
+import { YelizSametMenuDrawer } from "@/components/yeliz-samet-menu-drawer";
+import { Button } from "@/components/ui/button";
+
+const heroImages = [
+  "/yeliz-samet/salon-foto/IMG-20260107-WA0182.webp",
+  "/yeliz-samet/salon-foto/IMG-20260107-WA0192.webp",
+  "/yeliz-samet/yat-foto/IMG_6614 kopya.webp",
+  "/yeliz-samet/yat-foto/IMG_6594.webp",
+  "/yeliz-samet/salon-foto/IMG-20260107-WA0215.webp",
+  "/yeliz-samet/yat-foto/IMG_6637 kopya.webp",
+];
+
+export function YelizSametLandingClient() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % heroImages.length);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <>
+      <YelizSametTopbar onMenuClick={() => setMenuOpen(true)} />
+      
+      {/* Hero Section */}
+      <section className="relative w-full min-h-[calc(100svh-3.5rem-env(safe-area-inset-top))] overflow-hidden pt-[calc(3.5rem+env(safe-area-inset-top))]">
+        {heroImages.map((src, index) => (
+          <div
+            key={src}
+            className={`absolute inset-0 transition-opacity duration-700 ease-out ${
+              index === currentImageIndex ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <Image
+              src={src}
+              alt="Yeliz & Samet"
+              fill
+              priority={index === 0}
+              className="object-cover"
+              sizes="100vw"
+            />
+          </div>
+        ))}
+        {/* Fixed overlay - sabit katman (slide başına değil, flicker olmaması için) */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/20 to-black/70 pointer-events-none" />
+        
+        {/* Hero Content - Alt bölgeye taşındı */}
+        <div className="relative z-10 h-full flex flex-col items-center justify-end px-4 pb-[calc(env(safe-area-inset-bottom)+72px)] pt-16 text-center">
+          {/* Glass Panel */}
+          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-black/50 backdrop-blur-xl shadow-2xl p-6 md:p-8 space-y-4">
+            <div className="relative z-10">
+              <h1 className="text-4xl md:text-6xl font-bold mb-3 text-white tracking-tight drop-shadow-lg">
+                Yeliz & Samet
+              </h1>
+              <p className="text-base md:text-lg text-zinc-200/90 mb-6 leading-relaxed">
+                7 Ocak 2026 • Akdeniz Belediyesi Nikah Dairesi
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  asChild
+                  size="lg"
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm"
+                >
+                  <Link href="/yeliz-samet/salon">Salon Albümü</Link>
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="flex-1 bg-white/5 hover:bg-white/10 text-white border-white/20 backdrop-blur-sm"
+                >
+                  <Link href="/yeliz-samet/yat">Yat Albümü</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Hikaye / Günün Akışı Section */}
+      <section className="py-16 px-4">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="text-3xl md:text-4xl font-semibold text-center mb-12 text-white">
+            Günün Akışı
+          </h2>
+          <div className="space-y-6">
+            {/* Timeline Card 1 */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+                  <span className="text-xl">💍</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold mb-2 text-white">Nikah</h3>
+                  <p className="text-white/80">7 Ocak 2026</p>
+                  <p className="text-white/70">Akdeniz Belediyesi Nikah Dairesi</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Timeline Card 2 */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+                  <span className="text-xl">⛵</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold mb-2 text-white">Nikah Sonrası Yat Organizasyonu</h3>
+                  <p className="text-white/80">Mersin Marina</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Timeline Card 3 */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+                  <span className="text-xl">✨</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold mb-2 text-white">Katkı</h3>
+                  <p className="text-white/80">Smile Organizasyon</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Albüm Kartları Section */}
+      <section className="py-16 px-4 bg-black/20">
+        <div className="mx-auto max-w-6xl">
+          <h2 className="text-3xl md:text-4xl font-semibold text-center mb-12 text-white">
+            Albümler
+          </h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Salon Album Card */}
+            <Link
+              href="/yeliz-samet/salon"
+              className="group bg-white/5 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-sm hover:bg-white/10 transition-all hover:border-white/20"
+            >
+              <div className="relative aspect-[4/3] overflow-hidden">
+                <Image
+                  src="/yeliz-samet/salon-foto/IMG-20260107-WA0014.webp"
+                  alt="Salon Albümü"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              </div>
+              <div className="p-6">
+                <h3 className="text-2xl font-semibold mb-2 text-white">Salon Fotoğrafları</h3>
+                <p className="text-white/70">
+                  Nikah salonunda çekilen özel anlarımız
+                </p>
+              </div>
+            </Link>
+
+            {/* Yat Album Card */}
+            <Link
+              href="/yeliz-samet/yat"
+              className="group bg-white/5 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-sm hover:bg-white/10 transition-all hover:border-white/20"
+            >
+              <div className="relative aspect-[4/3] overflow-hidden">
+                <Image
+                  src="/yeliz-samet/yat-foto/IMG_6534.webp"
+                  alt="Yat Albümü"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              </div>
+              <div className="p-6">
+                <h3 className="text-2xl font-semibold mb-2 text-white">Yat Fotoğrafları</h3>
+                <p className="text-white/70">
+                  Mersin Marina&apos;da yat organizasyonu anıları
+                </p>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-8 px-4 text-center text-white/60 text-sm">
+        <p>Yeliz & Samet • 7 Ocak 2026</p>
+      </footer>
+
+      <YelizSametMenuDrawer open={menuOpen} onOpenChange={setMenuOpen} />
+    </>
+  );
+}

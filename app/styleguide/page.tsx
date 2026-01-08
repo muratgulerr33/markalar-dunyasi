@@ -1,3 +1,5 @@
+"use client"
+
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -5,9 +7,25 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Info, AlertCircle } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Info, AlertCircle, Search, Sun, Moon } from "lucide-react"
+import { useTheme } from "next-themes"
+import * as React from "react"
 
 export default function StyleguidePage() {
+  const { resolvedTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = React.useState(false)
+  const isDark = resolvedTheme === "dark"
+
+  // Hydration mismatch'i önlemek için mounted kontrolü
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const handleThemeToggle = (checked: boolean) => {
+    setTheme(checked ? "dark" : "light")
+  }
+
   const themeTokenPairs = [
     { 
       name: "primary", 
@@ -55,11 +73,24 @@ export default function StyleguidePage() {
 
   return (
     <div className="container py-12 space-y-12">
-      <div className="space-y-2">
-        <h1 className="text-4xl font-bold">Styleguide</h1>
-        <p className="text-muted-foreground">
-          Bu sayfa theme token'larını ve component varyantlarını gösterir.
-        </p>
+      <div className="flex items-start justify-between">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold">Styleguide</h1>
+          <p className="text-muted-foreground">
+            Bu sayfa theme token&apos;larını ve component varyantlarını gösterir.
+          </p>
+        </div>
+        {mounted && (
+          <div className="flex items-center gap-3">
+            <Sun className="h-5 w-5 text-muted-foreground" />
+            <Switch
+              checked={isDark}
+              onCheckedChange={handleThemeToggle}
+              aria-label="Tema değiştir"
+            />
+            <Moon className="h-5 w-5 text-muted-foreground" />
+          </div>
+        )}
       </div>
 
       {/* Bölüm A: Theme Tokens */}
@@ -110,7 +141,7 @@ export default function StyleguidePage() {
 
         {/* Standalone Tokens */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold">Tekil Token'lar</h3>
+          <h3 className="text-xl font-semibold">Tekil Token&apos;lar</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {standaloneTokens.map((token) => (
               <Card key={token.name}>
@@ -196,6 +227,31 @@ export default function StyleguidePage() {
             ))}
           </div>
         </div>
+
+        {/* Radius Token */}
+        <div className="space-y-4">
+          <h3 className="text-xl font-semibold">Radius Token</h3>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-mono">radius</CardTitle>
+              <CardDescription>Border radius değeri</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-4 items-center">
+                <div 
+                  className="bg-primary text-primary-foreground p-4 flex items-center justify-center min-w-[120px]"
+                  style={{ borderRadius: 'var(--radius)' }}
+                >
+                  Örnek (radius)
+                </div>
+                <div className="space-y-1">
+                  <code className="text-xs block">var(--radius) = 0.65rem</code>
+                  <code className="text-xs block text-muted-foreground">10.4px</code>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </section>
 
       {/* Bölüm B: Components */}
@@ -212,6 +268,29 @@ export default function StyleguidePage() {
             <Button variant="ghost">Ghost</Button>
             <Button variant="destructive">Destructive</Button>
             <Button variant="link">Link</Button>
+          </div>
+        </div>
+
+        {/* Button Size Varyantları */}
+        <div className="space-y-4">
+          <h3 className="text-xl font-semibold">Button Size Varyantları</h3>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm">Small</Button>
+              <Button size="default">Default</Button>
+              <Button size="lg">Large</Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="icon-sm">
+                <Search />
+              </Button>
+              <Button size="icon">
+                <Search />
+              </Button>
+              <Button size="icon-lg">
+                <Search />
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -271,10 +350,123 @@ export default function StyleguidePage() {
         {/* Input + Label */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold">Input + Label</h3>
-          <div className="space-y-2 max-w-md">
-            <Label htmlFor="example-input">Örnek Input</Label>
-            <Input id="example-input" placeholder="Bir şeyler yazın..." />
+          <div className="space-y-4 max-w-md">
+            <div className="space-y-2">
+              <Label htmlFor="example-input">Örnek Input</Label>
+              <Input id="example-input" placeholder="Bir şeyler yazın..." />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="disabled-input">Disabled Input</Label>
+              <Input id="disabled-input" placeholder="Devre dışı input" disabled />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="error-input" className="text-destructive">
+                Hatalı Input
+              </Label>
+              <Input 
+                id="error-input" 
+                placeholder="Hata durumu" 
+                aria-invalid="true"
+                className="border-destructive focus-visible:ring-destructive"
+              />
+            </div>
           </div>
+        </div>
+      </section>
+
+      {/* Bölüm E: Typography */}
+      <section className="space-y-6">
+        <h2 className="text-2xl font-semibold">Typography</h2>
+        
+        {/* Font Aileleri */}
+        <div className="space-y-4">
+          <h3 className="text-xl font-semibold">Font Aileleri</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-mono">Geist Sans</CardTitle>
+                <CardDescription>Ana font ailesi</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="font-sans text-lg">
+                  Geist Sans - Bu font ailesi varsayılan olarak kullanılır.
+                </p>
+                <p className="font-sans text-sm text-muted-foreground mt-2">
+                  ABCDEFGHIJKLMNOPQRSTUVWXYZ<br />
+                  abcdefghijklmnopqrstuvwxyz<br />
+                  0123456789
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-mono">Geist Mono</CardTitle>
+                <CardDescription>Monospace font ailesi</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="font-mono text-lg">
+                  Geist Mono - Kod ve teknik metinler için.
+                </p>
+                <p className="font-mono text-sm text-muted-foreground mt-2">
+                  ABCDEFGHIJKLMNOPQRSTUVWXYZ<br />
+                  abcdefghijklmnopqrstuvwxyz<br />
+                  0123456789
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Başlık Stilleri */}
+        <div className="space-y-4">
+          <h3 className="text-xl font-semibold">Başlık Stilleri</h3>
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <div>
+                <h1 className="text-4xl font-bold">H1 Başlık - 4xl Bold</h1>
+                <code className="text-xs text-muted-foreground">text-4xl font-bold</code>
+              </div>
+              <div>
+                <h2 className="text-3xl font-semibold">H2 Başlık - 3xl Semibold</h2>
+                <code className="text-xs text-muted-foreground">text-3xl font-semibold</code>
+              </div>
+              <div>
+                <h3 className="text-2xl font-semibold">H3 Başlık - 2xl Semibold</h3>
+                <code className="text-xs text-muted-foreground">text-2xl font-semibold</code>
+              </div>
+              <div>
+                <h4 className="text-xl font-semibold">H4 Başlık - xl Semibold</h4>
+                <code className="text-xs text-muted-foreground">text-xl font-semibold</code>
+              </div>
+              <div>
+                <h5 className="text-lg font-semibold">H5 Başlık - lg Semibold</h5>
+                <code className="text-xs text-muted-foreground">text-lg font-semibold</code>
+              </div>
+              <div>
+                <h6 className="text-base font-semibold">H6 Başlık - base Semibold</h6>
+                <code className="text-xs text-muted-foreground">text-base font-semibold</code>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Metin Stilleri */}
+        <div className="space-y-4">
+          <h3 className="text-xl font-semibold">Metin Stilleri</h3>
+          <Card>
+            <CardContent className="pt-6 space-y-3">
+              <div>
+                <p className="text-base">Normal paragraf metni (text-base)</p>
+                <p className="text-sm text-muted-foreground">Küçük metin (text-sm)</p>
+                <p className="text-xs text-muted-foreground">Çok küçük metin (text-xs)</p>
+              </div>
+              <div className="pt-2 border-t">
+                <p className="font-medium">Orta kalınlıkta metin (font-medium)</p>
+                <p className="font-semibold">Yarı kalın metin (font-semibold)</p>
+                <p className="font-bold">Kalın metin (font-bold)</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
@@ -308,7 +500,7 @@ export default function StyleguidePage() {
           <Card>
             <CardHeader>
               <CardTitle>Sidebar Mock</CardTitle>
-              <CardDescription>Sidebar token'larının görselleştirilmesi</CardDescription>
+              <CardDescription>Sidebar token&apos;larının görselleştirilmesi</CardDescription>
             </CardHeader>
             <CardContent>
               <div
@@ -367,6 +559,121 @@ export default function StyleguidePage() {
             </CardContent>
           </Card>
         </div>
+      </section>
+
+      {/* Bölüm F: Tüm Token Değerleri (Klonlama için) */}
+      <section className="space-y-6">
+        <h2 className="text-2xl font-semibold">Tüm Token Değerleri</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle>CSS Değişken Değerleri</CardTitle>
+            <CardDescription>
+              Bu bölüm tüm tema token değerlerini içerir. Başka bir projede klonlamak için kopyalayabilirsiniz.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <div>
+                <h4 className="font-semibold mb-2 text-sm">Light Mode (:root)</h4>
+                <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs font-mono">
+{`:root {
+  --radius: 0.65rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.141 0.005 285.823);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
+  --primary: oklch(0.586 0.253 17.585);
+  --primary-foreground: oklch(0.969 0.015 12.422);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+  --accent: oklch(0.967 0.001 286.375);
+  --accent-foreground: oklch(0.21 0.006 285.885);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: oklch(0.712 0.194 13.428);
+  --chart-1: oklch(0.81 0.117 11.638);
+  --chart-2: oklch(0.645 0.246 16.439);
+  --chart-3: oklch(0.586 0.253 17.585);
+  --chart-4: oklch(0.514 0.222 16.935);
+  --chart-5: oklch(0.455 0.188 13.697);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-primary: oklch(0.586 0.253 17.585);
+  --sidebar-primary-foreground: oklch(0.969 0.015 12.422);
+  --sidebar-accent: oklch(0.967 0.001 286.375);
+  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-ring: oklch(0.712 0.194 13.428);
+}`}
+                </pre>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2 text-sm">Dark Mode (.dark)</h4>
+                <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs font-mono">
+{`.dark {
+  --background: oklch(0.141 0.005 285.823);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.21 0.006 285.885);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.21 0.006 285.885);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.645 0.246 16.439);
+  --primary-foreground: oklch(0.969 0.015 12.422);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.274 0.006 286.033);
+  --muted-foreground: oklch(0.705 0.015 286.067);
+  --accent: oklch(0.274 0.006 286.033);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.41 0.159 10.272);
+  --chart-1: oklch(0.81 0.117 11.638);
+  --chart-2: oklch(0.645 0.246 16.439);
+  --chart-3: oklch(0.586 0.253 17.585);
+  --chart-4: oklch(0.514 0.222 16.935);
+  --chart-5: oklch(0.455 0.188 13.697);
+  --sidebar: oklch(0.21 0.006 285.885);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.645 0.246 16.439);
+  --sidebar-primary-foreground: oklch(0.969 0.015 12.422);
+  --sidebar-accent: oklch(0.274 0.006 286.033);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.41 0.159 10.272);
+}`}
+                </pre>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2 text-sm">Font Aileleri</h4>
+                <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs font-mono">
+{`Font Aileleri:
+- Geist Sans (Ana font)
+- Geist Mono (Monospace font)
+
+Next.js Font Import:
+import { Geist, Geist_Mono } from "next/font/google";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});`}
+                </pre>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </section>
     </div>
   )

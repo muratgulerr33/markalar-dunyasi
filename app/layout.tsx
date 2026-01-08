@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { SiteHeader } from "@/components/site-header";
+import RouteAwareShell from "@/components/route-aware-shell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://markalar-dunyasi.vercel.app"),
   title: "Markalar Dünyası",
   description: "Markalar Dünyası - Yeni Sezon Koleksiyonları",
 };
@@ -29,11 +30,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <SiteHeader />
-          <main className="safe-header">
-            {children}
-          </main>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <RouteAwareShell>{children}</RouteAwareShell>
         </ThemeProvider>
       </body>
     </html>
