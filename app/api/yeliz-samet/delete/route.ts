@@ -6,16 +6,6 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if guest delete is enabled
-    const guestDeleteEnabled = process.env.GUEST_DELETE_ENABLED === "true";
-    
-    if (!guestDeleteEnabled) {
-      return NextResponse.json(
-        { error: "Guest delete is disabled" },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const { albumSlug, filename } = body;
 

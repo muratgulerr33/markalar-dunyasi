@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { TapIconButton } from "@/components/ui/tap";
-import { softHaptic } from "@/lib/haptics";
+import { softHaptic, mediumHaptic } from "@/lib/haptics";
 
 interface YelizSametPhotoViewerProps {
   open: boolean;
@@ -32,7 +32,6 @@ interface YelizSametPhotoViewerProps {
 
 const LONG_PRESS_DURATION = 450;
 const MOVE_THRESHOLD = 10;
-const deleteEnabled = process.env.NEXT_PUBLIC_GUEST_DELETE_ENABLED === "true";
 
 export function YelizSametPhotoViewer({
   open,
@@ -220,11 +219,12 @@ export function YelizSametPhotoViewer({
   const handleDelete = useCallback(async () => {
     if (!albumSlug) return;
 
+    mediumHaptic();
     const currentItem = items[selectedIndex];
     const filename = currentItem.split("/").pop() || currentItem;
 
     // Native confirm dialog
-    const confirmed = window.confirm("Bu fotoğrafı silmek istediğinize emin misiniz?");
+    const confirmed = window.confirm("Bu fotoğraf silinsin mi?");
     if (!confirmed) return;
 
     try {
@@ -240,12 +240,7 @@ export function YelizSametPhotoViewer({
       });
 
       if (!response.ok) {
-        if (response.status === 403) {
-          alert("Silme özelliği şu anda devre dışı.");
-        } else {
-          throw new Error("Silme işlemi başarısız");
-        }
-        return;
+        throw new Error("Silme işlemi başarısız");
       }
 
       // Optimistic update: item'ı listeden kaldır
@@ -327,10 +322,9 @@ export function YelizSametPhotoViewer({
                   <Download className="mr-2 h-4 w-4" />
                   İndir
                 </DropdownMenuItem>
-                {albumSlug && deleteEnabled && (
+                {albumSlug && (
                   <DropdownMenuItem 
                     onClick={() => {
-                      softHaptic();
                       handleDelete();
                     }} 
                     className="text-destructive focus:text-destructive"

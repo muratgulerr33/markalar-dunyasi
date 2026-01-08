@@ -6,8 +6,8 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { TapButton } from "@/components/ui/tap";
 import { YelizSametPhotoViewer } from "@/components/yeliz-samet-photo-viewer";
-import { softHaptic } from "@/lib/haptics";
-import { Check } from "lucide-react";
+import { softHaptic, mediumHaptic } from "@/lib/haptics";
+import { Check, Trash2 } from "lucide-react";
 
 interface YelizSametAlbumGridProps {
   items: string[];
@@ -37,6 +37,7 @@ export function YelizSametAlbumGrid({
   const [internalSelectionMode, setInternalSelectionMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [downloadingSelected, setDownloadingSelected] = useState(false);
+  const [deletingSelected, setDeletingSelected] = useState(false);
   const [deletedFiles, setDeletedFiles] = useState<Set<string>>(new Set());
   
   // External selectionMode prop'u varsa onu kullan, yoksa internal state'i kullan
@@ -143,6 +144,55 @@ export function YelizSametAlbumGrid({
       alert("İndirme sırasında bir hata oluştu");
     } finally {
       setDownloadingSelected(false);
+    }
+  }, [selected, albumSlug]);
+
+  const deleteSelected = useCallback(async () => {
+    if (selected.size === 0 || !albumSlug) return;
+    
+    mediumHaptic();
+    const confirmed = window.confirm(`Seçilen ${selected.size} fotoğraf silinsin mi?`);
+    if (!confirmed) return;
+
+    setDeletingSelected(true);
+    try {
+      const selectedArray = Array.from(selected);
+      const deletePromises = selectedArray.map(async (item) => {
+        const filename = item.split("/").pop() || item;
+        const response = await fetch("/api/yeliz-samet/delete", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            albumSlug,
+            filename,
+          }),
+        });
+        if (!response.ok) {
+          throw new Error(`Silme hatası: ${filename}`);
+        }
+        return filename;
+      });
+
+      const deletedFilenames = await Promise.all(deletePromises);
+      
+      // Optimistic update: silinen dosyaları deletedFiles'e ekle
+      setDeletedFiles((prev) => {
+        const next = new Set(prev);
+        deletedFilenames.forEach((filename) => {
+          next.add(filename);
+        });
+        return next;
+      });
+
+      // Seçimi temizle
+      setSelected(new Set());
+    } catch (error) {
+      console.error("Silme hatası:", error);
+      alert("Silme işlemi sırasında bir hata oluştu");
+    } finally {
+      setDeletingSelected(false);
     }
   }, [selected, albumSlug]);
 
@@ -294,6 +344,21 @@ export function YelizSametAlbumGrid({
                   : `Seçilenleri indir (${selected.size})`}
               </Button>
             </TapButton>
+            {albumSlug && (
+              <TapButton asChild>
+                <Button
+                  variant="destructive"
+                  onClick={deleteSelected}
+                  disabled={selected.size === 0 || deletingSelected}
+                  size="sm"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  {deletingSelected
+                    ? "Siliniyor..."
+                    : `Sil (${selected.size})`}
+                </Button>
+              </TapButton>
+            )}
             <TapButton asChild>
               <Button variant="outline" onClick={handleClearSelection} size="sm">
                 Temizle

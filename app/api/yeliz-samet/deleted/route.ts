@@ -6,13 +6,6 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    // Check if guest delete is enabled
-    const guestDeleteEnabled = process.env.GUEST_DELETE_ENABLED === "true";
-    
-    if (!guestDeleteEnabled) {
-      return NextResponse.json({ deleted: [] });
-    }
-
     const searchParams = request.nextUrl.searchParams;
     const albumSlug = searchParams.get("albumSlug");
 
