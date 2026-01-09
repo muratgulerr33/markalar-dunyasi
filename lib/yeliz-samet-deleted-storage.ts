@@ -107,7 +107,9 @@ if (typeof window === "undefined") {
         }
 
         // Store in globalThis for serverless reuse (works in both dev and prod)
-        global.__redisClient = redisClient;
+        if (redisClient) {
+          global.__redisClient = redisClient;
+        }
       }
 
       if (redisClient) {
