@@ -68,30 +68,43 @@ if (typeof window === "undefined") {
       if (global.__redisClient) {
         redisClient = global.__redisClient;
       } else {
-        // Parse URL to handle TLS and authentication
-        // Redis URL format: redis://:password@host:port or rediss://:password@host:port
-        const url = new URL(redisUrl);
-        const protocol = url.protocol === "rediss:" ? "rediss:" : "redis:";
+        // Use Redis URL directly - node-redis handles authentication from URL
+        // URL format: redis://username:password@host:port or rediss://username:password@host:port
+        // Vercel Redis format: redis://default:password@host:port
         
-        // Preserve password and other URL components
-        const finalUrl = redisUrl; // Use original URL to preserve auth info
-
-        redisClient = createClient({
-          url: finalUrl,
-          socket: {
-            reconnectStrategy: (retries) => {
-              if (retries > 10) {
-                console.error("[deleted-storage] Redis reconnection failed after 10 retries");
-                return new Error("Redis reconnection limit exceeded");
-              }
-              return Math.min(retries * 100, 3000);
+        try {
+          redisClient = createClient({
+            url: redisUrl,
+            socket: {
+              reconnectStrategy: (retries) => {
+                if (retries > 10) {
+                  console.error("[deleted-storage] Redis reconnection failed after 10 retries");
+                  return new Error("Redis reconnection limit exceeded");
+                }
+                return Math.min(retries * 100, 3000);
+              },
             },
-          },
-        });
+          });
 
-        redisClient.on("error", (err) => {
-          console.error("[deleted-storage] Redis client error:", err);
-        });
+          redisClient.on("error", (err) => {
+            console.error("[deleted-storage] Redis client error:", err);
+            // Log error details for debugging
+            if (err.message.includes("NOAUTH") || err.message.includes("Authentication")) {
+              console.error("[deleted-storage] Redis authentication error - check URL format and password");
+            }
+          });
+
+          redisClient.on("connect", () => {
+            console.log("[deleted-storage] Redis client connected");
+          });
+
+          redisClient.on("ready", () => {
+            console.log("[deleted-storage] Redis client ready");
+          });
+        } catch (error) {
+          console.error("[deleted-storage] Failed to create Redis client:", error);
+          redisClient = null;
+        }
 
         // Store in globalThis for serverless reuse (works in both dev and prod)
         global.__redisClient = redisClient;

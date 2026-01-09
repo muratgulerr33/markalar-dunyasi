@@ -105,16 +105,62 @@ export async function POST(request: NextRequest) {
 
     console.log("[migrate-deleted] Starting migration...");
 
+    // Check Redis connection first
+    const redisUrl = process.env.KV_REDIS_URL || process.env.REDIS_URL || process.env.VERCEL_REDIS_URL;
+    if (!redisUrl) {
+      return NextResponse.json(
+        { error: "Redis URL not configured", details: "Set KV_REDIS_URL, REDIS_URL, or VERCEL_REDIS_URL" },
+        { 
+          status: 500,
+          headers: {
+            "Cache-Control": "no-store, max-age=0",
+          },
+        }
+      );
+    }
+
+    try {
+      // Test connection by getting current deleted list
+      const testSalon = await deletedStorage.get("salon");
+      const testYat = await deletedStorage.get("yat");
+      console.log(`[migrate-deleted] Redis connection OK. Current: salon=${testSalon.length}, yat=${testYat.length}`);
+    } catch (error: any) {
+      console.error("[migrate-deleted] Redis connection test failed:", error);
+      return NextResponse.json(
+        { 
+          error: "Redis connection failed", 
+          details: error.message || String(error),
+          hint: "Check Redis URL format and authentication. URL should be: redis://username:password@host:port"
+        },
+        { 
+          status: 500,
+          headers: {
+            "Cache-Control": "no-store, max-age=0",
+          },
+        }
+      );
+    }
+
     // Add salon photos
     if (DELETED_SALON.length > 0) {
-      await deletedStorage.addMany("salon", DELETED_SALON);
-      console.log(`[migrate-deleted] Added ${DELETED_SALON.length} salon photos`);
+      try {
+        await deletedStorage.addMany("salon", DELETED_SALON);
+        console.log(`[migrate-deleted] Added ${DELETED_SALON.length} salon photos`);
+      } catch (error: any) {
+        console.error("[migrate-deleted] Failed to add salon photos:", error);
+        throw new Error(`Failed to add salon photos: ${error.message}`);
+      }
     }
 
     // Add yat photos
     if (DELETED_YAT.length > 0) {
-      await deletedStorage.addMany("yat", DELETED_YAT);
-      console.log(`[migrate-deleted] Added ${DELETED_YAT.length} yat photos`);
+      try {
+        await deletedStorage.addMany("yat", DELETED_YAT);
+        console.log(`[migrate-deleted] Added ${DELETED_YAT.length} yat photos`);
+      } catch (error: any) {
+        console.error("[migrate-deleted] Failed to add yat photos:", error);
+        throw new Error(`Failed to add yat photos: ${error.message}`);
+      }
     }
 
     // Verify
