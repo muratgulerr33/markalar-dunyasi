@@ -55,7 +55,9 @@ export function YelizSametAlbumGrid({
 
     const fetchDeleted = async () => {
       try {
-        const response = await fetch(`/api/yeliz-samet/deleted?albumSlug=${albumSlug}`);
+        const response = await fetch(`/api/yeliz-samet/deleted?albumSlug=${albumSlug}`, {
+          cache: "no-store",
+        });
         if (response.ok) {
           const data = await response.json();
           setDeletedFiles(new Set(data.deleted || []));

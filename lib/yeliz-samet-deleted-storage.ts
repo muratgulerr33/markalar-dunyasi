@@ -1,10 +1,13 @@
 /**
  * Yeliz-Samet deleted images storage
- * Uses @vercel/kv if available, otherwise in-memory Map fallback for local dev
+ * Uses Redis (node-redis) if KV_REDIS_URL is available, otherwise in-memory Map fallback for local dev
  */
+
+import { createClient, RedisClientType } from "redis";
 
 type DeletedStorage = {
   add: (albumSlug: string, filename: string) => Promise<void>;
+  addMany: (albumSlug: string, filenames: string[]) => Promise<void>;
   get: (albumSlug: string) => Promise<string[]>;
   has: (albumSlug: string, filename: string) => Promise<boolean>;
 };
@@ -15,60 +18,158 @@ const inMemoryStorage = new Map<string, Set<string>>();
 const getInMemoryStorage = (): DeletedStorage => {
   return {
     async add(albumSlug: string, filename: string) {
-      const key = `ys:deleted:index:${albumSlug}`;
+      const key = `yeliz-samet:deleted:${albumSlug}`;
       if (!inMemoryStorage.has(key)) {
         inMemoryStorage.set(key, new Set());
       }
       inMemoryStorage.get(key)!.add(filename);
     },
+    async addMany(albumSlug: string, filenames: string[]) {
+      const key = `yeliz-samet:deleted:${albumSlug}`;
+      if (!inMemoryStorage.has(key)) {
+        inMemoryStorage.set(key, new Set());
+      }
+      const set = inMemoryStorage.get(key)!;
+      filenames.forEach((filename) => set.add(filename));
+    },
     async get(albumSlug: string) {
-      const key = `ys:deleted:index:${albumSlug}`;
+      const key = `yeliz-samet:deleted:${albumSlug}`;
       const set = inMemoryStorage.get(key);
       return set ? Array.from(set) : [];
     },
     async has(albumSlug: string, filename: string) {
-      const key = `ys:deleted:index:${albumSlug}`;
+      const key = `yeliz-samet:deleted:${albumSlug}`;
       const set = inMemoryStorage.get(key);
       return set ? set.has(filename) : false;
     },
   };
 };
 
-// Try to use @vercel/kv if available
-let kvStorage: DeletedStorage | null = null;
+// Redis client singleton (serverless-friendly, using globalThis)
+declare global {
+  // eslint-disable-next-line no-var
+  var __redisClient: RedisClientType | undefined;
+}
 
-// Initialize KV storage if available (runtime check)
-if (typeof window === "undefined" && process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-  // Only try to load @vercel/kv on server side
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const kvModule = require("@vercel/kv");
-    const kv = kvModule.kv || kvModule.default;
-    
-    if (kv) {
-      kvStorage = {
-        async add(albumSlug: string, filename: string) {
-          const key = `ys:deleted:index:${albumSlug}`;
-          await kv.sadd(key, filename);
-          // Set expiration to 30 days (2592000 seconds)
-          await kv.expire(key, 2592000);
-        },
-        async get(albumSlug: string) {
-          const key = `ys:deleted:index:${albumSlug}`;
-          const members = await kv.smembers(key);
-          return Array.isArray(members) ? members.map(String) : [];
-        },
-        async has(albumSlug: string, filename: string) {
-          const key = `ys:deleted:index:${albumSlug}`;
-          const result = await kv.sismember(key, filename);
-          return result === 1;
-        },
-      };
+let redisStorage: DeletedStorage | null = null;
+
+// Initialize Redis storage if available (runtime check)
+if (typeof window === "undefined") {
+  const redisUrl =
+    process.env.KV_REDIS_URL ||
+    process.env.REDIS_URL ||
+    process.env.VERCEL_REDIS_URL;
+
+  if (redisUrl) {
+    try {
+      // Get or create Redis client (singleton pattern using globalThis for serverless)
+      let redisClient: RedisClientType | null = null;
+
+      if (global.__redisClient) {
+        redisClient = global.__redisClient;
+      } else {
+        // Parse URL to handle TLS (rediss:// automatically enables TLS)
+        const url = new URL(redisUrl);
+        // Use rediss:// for TLS or redis:// for non-TLS
+        const protocol = url.protocol === "rediss:" ? "rediss:" : "redis:";
+        const finalUrl = `${protocol}//${url.host}${url.pathname}${url.search}`;
+
+        redisClient = createClient({
+          url: finalUrl,
+          socket: {
+            reconnectStrategy: (retries) => {
+              if (retries > 10) {
+                console.error("[deleted-storage] Redis reconnection failed after 10 retries");
+                return new Error("Redis reconnection limit exceeded");
+              }
+              return Math.min(retries * 100, 3000);
+            },
+          },
+        });
+
+        redisClient.on("error", (err) => {
+          console.error("[deleted-storage] Redis client error:", err);
+        });
+
+        // Store in globalThis for serverless reuse (works in both dev and prod)
+        global.__redisClient = redisClient;
+      }
+
+      if (redisClient) {
+        redisStorage = {
+          async add(albumSlug: string, filename: string) {
+            if (!redisClient) throw new Error("Redis client not available");
+            try {
+              // Ensure connection (lazy connect)
+              if (!redisClient.isOpen) {
+                await redisClient.connect();
+              }
+              const key = `yeliz-samet:deleted:${albumSlug}`;
+              await redisClient.sAdd(key, filename);
+              // Set expiration to 30 days (2592000 seconds)
+              await redisClient.expire(key, 2592000);
+            } catch (error) {
+              console.error("[deleted-storage] Redis add error:", error);
+              throw error;
+            }
+          },
+          async addMany(albumSlug: string, filenames: string[]) {
+            if (!redisClient) throw new Error("Redis client not available");
+            try {
+              // Ensure connection (lazy connect)
+              if (!redisClient.isOpen) {
+                await redisClient.connect();
+              }
+              const key = `yeliz-samet:deleted:${albumSlug}`;
+              if (filenames.length > 0) {
+                await redisClient.sAdd(key, filenames);
+                // Set expiration to 30 days (2592000 seconds)
+                await redisClient.expire(key, 2592000);
+              }
+            } catch (error) {
+              console.error("[deleted-storage] Redis addMany error:", error);
+              throw error;
+            }
+          },
+          async get(albumSlug: string) {
+            if (!redisClient) throw new Error("Redis client not available");
+            try {
+              // Ensure connection (lazy connect)
+              if (!redisClient.isOpen) {
+                await redisClient.connect();
+              }
+              const key = `yeliz-samet:deleted:${albumSlug}`;
+              const members = await redisClient.sMembers(key);
+              return Array.isArray(members) ? members.map(String) : [];
+            } catch (error) {
+              console.error("[deleted-storage] Redis get error:", error);
+              // Fallback to empty array on error
+              return [];
+            }
+          },
+          async has(albumSlug: string, filename: string) {
+            if (!redisClient) throw new Error("Redis client not available");
+            try {
+              // Ensure connection (lazy connect)
+              if (!redisClient.isOpen) {
+                await redisClient.connect();
+              }
+              const key = `yeliz-samet:deleted:${albumSlug}`;
+              const result = await redisClient.sIsMember(key, filename);
+              return Boolean(result);
+            } catch (error) {
+              console.error("[deleted-storage] Redis has error:", error);
+              // Fallback to false on error
+              return false;
+            }
+          },
+        };
+      }
+    } catch (error) {
+      console.error("[deleted-storage] Redis initialization failed:", error);
+      console.log("[deleted-storage] Falling back to in-memory storage");
     }
-  } catch {
-    // @vercel/kv not available or not configured, use in-memory fallback
-    console.log("[deleted-storage] Using in-memory fallback (KV not available)");
   }
 }
 
-export const deletedStorage: DeletedStorage = kvStorage || getInMemoryStorage();
+export const deletedStorage: DeletedStorage = redisStorage || getInMemoryStorage();
