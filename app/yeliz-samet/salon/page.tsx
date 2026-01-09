@@ -2,6 +2,7 @@ import { getGalleryManifest } from "@/lib/yeliz-samet-manifest";
 import { deletedStorage } from "@/lib/yeliz-samet-deleted-storage";
 import { YelizSametSalonClient } from "@/components/yeliz-samet-salon-client";
 
+export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Salon Fotolar",
   robots: { index: false, follow: false },

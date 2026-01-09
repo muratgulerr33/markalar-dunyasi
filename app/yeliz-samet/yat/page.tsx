@@ -2,6 +2,7 @@ import { getGalleryManifest } from "@/lib/yeliz-samet-manifest";
 import { deletedStorage } from "@/lib/yeliz-samet-deleted-storage";
 import { YelizSametYatClient } from "@/components/yeliz-samet-yat-client";
 
+export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Yat Fotolar",
   robots: { index: false, follow: false },
