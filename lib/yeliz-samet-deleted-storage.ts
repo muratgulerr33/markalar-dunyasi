@@ -68,11 +68,13 @@ if (typeof window === "undefined") {
       if (global.__redisClient) {
         redisClient = global.__redisClient;
       } else {
-        // Parse URL to handle TLS (rediss:// automatically enables TLS)
+        // Parse URL to handle TLS and authentication
+        // Redis URL format: redis://:password@host:port or rediss://:password@host:port
         const url = new URL(redisUrl);
-        // Use rediss:// for TLS or redis:// for non-TLS
         const protocol = url.protocol === "rediss:" ? "rediss:" : "redis:";
-        const finalUrl = `${protocol}//${url.host}${url.pathname}${url.search}`;
+        
+        // Preserve password and other URL components
+        const finalUrl = redisUrl; // Use original URL to preserve auth info
 
         redisClient = createClient({
           url: finalUrl,

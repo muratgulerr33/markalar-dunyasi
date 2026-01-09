@@ -88,9 +88,12 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get("authorization");
     const expectedToken = process.env.MIGRATION_TOKEN || "migration-secret-2025";
     
-    if (authHeader !== `Bearer ${expectedToken}`) {
+    // Allow both "Bearer token" and just "token" format
+    const providedToken = authHeader?.replace("Bearer ", "") || authHeader;
+    
+    if (providedToken !== expectedToken) {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { error: "Unauthorized", details: "Invalid token" },
         { 
           status: 401,
           headers: {
