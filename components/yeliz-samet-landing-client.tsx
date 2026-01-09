@@ -246,7 +246,7 @@ export function YelizSametLandingClient() {
             >
               <div className="relative aspect-[4/3] overflow-hidden">
                 <Image
-                  src="/yeliz-samet/yat-foto/IMG_6534.webp"
+                  src="/yeliz-samet/yat-foto/IMG_6594.webp"
                   alt="Yat Albümü"
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-500"
